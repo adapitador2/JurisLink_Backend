@@ -1,63 +1,61 @@
-version: "3.9"
+name: jurislink
 
 services:
   mysql:
-    image: mysql:8.0
-    container_name: jurislink-mysql
+    image: mysql:8.4
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-jurislink2024}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Defina MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME:-jurislink}
+      MYSQL_USER: ${DB_USER:-jurislink_app}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD}
       TZ: America/Sao_Paulo
-    ports:
-      - "23306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DB_PASSWORD:-jurislink2024}"]
+      test:
+        - CMD-SHELL
+        - mysqladmin ping -h 127.0.0.1 -uroot -p"$$MYSQL_ROOT_PASSWORD" --silent
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 30s
-    command:
-      - --default-authentication-plugin=mysql_native_password
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
-    networks:
-      - jurislink-network
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: jurislink-backend
     restart: unless-stopped
     depends_on:
       mysql:
         condition: service_healthy
     environment:
-      PORT_SERVER: ${PORT_SERVER:-8000}
+      NODE_ENV: production
+      PORT_SERVER: 8000
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_USER: root
-      DB_PASSWORD: ${DB_PASSWORD:-jurislink2024}
+      DB_USER: ${DB_USER:-jurislink_app}
+      DB_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD}
       DB_NAME: ${DB_NAME:-jurislink}
-      ACCESS_TOKEN_SECRET: ${ACCESS_TOKEN_SECRET:-mude_esta_chave_em_producao}
-      CORS_ORIGIN: ${CORS_ORIGIN:-}
-    ports:
-      - "41827:8000"
+      ACCESS_TOKEN_SECRET: ${ACCESS_TOKEN_SECRET:?Defina ACCESS_TOKEN_SECRET}
+      CORS_ORIGINS: ${CORS_ORIGINS:?Defina CORS_ORIGINS}
+      TZ: America/Sao_Paulo
+    expose:
+      - "8000"
     volumes:
       - uploads_data:/app/uploads
-    networks:
-      - jurislink-network
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8000/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
 
 volumes:
   mysql_data:
-    driver: local
   uploads_data:
-    driver: local
-
-networks:
-  jurislink-network:
-    driver: bridge
