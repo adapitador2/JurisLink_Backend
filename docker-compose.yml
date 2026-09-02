@@ -10,7 +10,7 @@ services:
       MYSQL_DATABASE: ${DB_NAME:-jurislink}
       TZ: America/Sao_Paulo
     ports:
-      - "3306:3306"
+      - "23306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./docker/mysql/init:/docker-entrypoint-initdb.d
@@ -46,7 +46,7 @@ services:
       ACCESS_TOKEN_SECRET: ${ACCESS_TOKEN_SECRET:-mude_esta_chave_em_producao}
       CORS_ORIGIN: ${CORS_ORIGIN:-}
     ports:
-      - "8000:8000"
+      - "41827:8000"
     volumes:
       - uploads_data:/app/uploads
     networks:
