@@ -1,0 +1,63 @@
+version: "3.9"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: jurislink-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-jurislink2024}
+      MYSQL_DATABASE: ${DB_NAME:-jurislink}
+      TZ: America/Sao_Paulo
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DB_PASSWORD:-jurislink2024}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    networks:
+      - jurislink-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jurislink-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      PORT_SERVER: ${PORT_SERVER:-8000}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-jurislink2024}
+      DB_NAME: ${DB_NAME:-jurislink}
+      ACCESS_TOKEN_SECRET: ${ACCESS_TOKEN_SECRET:-mude_esta_chave_em_producao}
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
+    ports:
+      - "8000:8000"
+    volumes:
+      - uploads_data:/app/uploads
+    networks:
+      - jurislink-network
+
+volumes:
+  mysql_data:
+    driver: local
+  uploads_data:
+    driver: local
+
+networks:
+  jurislink-network:
+    driver: bridge
