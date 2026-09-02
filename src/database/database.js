@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || "127.0.0.1",
+  host: process.env.DB_HOST || "mysql",
   port: Number(process.env.DB_PORT || 3306),
   user: process.env.DB_USER || "jurislink_app",
   password: process.env.DB_PASSWORD,
